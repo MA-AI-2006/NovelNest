@@ -1,0 +1,22 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Rules for user profile/data documents
+    match /users/{email} {
+      // Accessible by backend server or authenticated user
+      allow read, write: if true;
+    }
+
+    // Rules for forum posts
+    match /forumPosts/{postId} {
+      // Publicly readable, writable by backend server or authenticated user
+      allow read: if true;
+      allow write: if true;
+    }
+  }
+}

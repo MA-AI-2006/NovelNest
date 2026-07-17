@@ -1,0 +1,131 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "displayName": { "type": "string" },
+        "email": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "joinedAt": { "type": "string" },
+        "dailyGoal": { "type": "integer" },
+        "yearlyGoal": { "type": "integer" }
+      },
+      "required": ["uid", "displayName", "email"]
+    },
+    "BookNote": {
+      "title": "BookNote",
+      "description": "A progress note added to a book",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "page": { "type": "integer" },
+        "chapter": { "type": "string" },
+        "content": { "type": "string" },
+        "timestamp": { "type": "string" }
+      },
+      "required": ["id", "content", "timestamp"]
+    },
+    "Book": {
+      "title": "Book",
+      "description": "A book on the user's shelf",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "authors": {
+          "type": "array"
+        },
+        "categories": {
+          "type": "array"
+        },
+        "thumbnail": { "type": "string" },
+        "publishedDate": { "type": "string" },
+        "pageCount": { "type": "integer" },
+        "description": { "type": "string" },
+        "status": { "type": "string", "enum": ["reading", "read", "DNF", "TBR"] },
+        "userRating": { "type": "integer" },
+        "currentPage": { "type": "integer" },
+        "review": { "type": "string" },
+        "dateAdded": { "type": "string" },
+        "dateStarted": { "type": "string" },
+        "dateCompleted": { "type": "string" }
+      },
+      "required": ["id", "title", "authors", "status", "currentPage"]
+    },
+    "Streak": {
+      "title": "Streak",
+      "description": "Reading habits and streak data",
+      "type": "object",
+      "properties": {
+        "currentStreak": { "type": "integer" },
+        "longestStreak": { "type": "integer" },
+        "lastActiveDate": { "type": "string" },
+        "activityHistory": { "type": "object" }
+      },
+      "required": ["currentStreak", "longestStreak", "lastActiveDate", "activityHistory"]
+    },
+    "UserData": {
+      "title": "UserData",
+      "description": "The complete user library, profile, and habits",
+      "type": "object",
+      "properties": {
+        "profile": { "$ref": "#/entities/UserProfile" },
+        "books": {
+          "type": "array"
+        },
+        "streak": { "$ref": "#/entities/Streak" }
+      }
+    },
+    "ForumReply": {
+      "title": "ForumReply",
+      "description": "A reply to a community forum post",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "userDisplayName": { "type": "string" },
+        "userPhotoURL": { "type": "string" },
+        "content": { "type": "string" },
+        "timestamp": { "type": "string" }
+      },
+      "required": ["id", "userId", "userDisplayName", "content", "timestamp"]
+    },
+    "ForumPost": {
+      "title": "ForumPost",
+      "description": "A community discussion or milestone post",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "userDisplayName": { "type": "string" },
+        "userPhotoURL": { "type": "string" },
+        "bookId": { "type": "string" },
+        "bookTitle": { "type": "string" },
+        "type": { "type": "string", "enum": ["review", "thought", "milestone"] },
+        "content": { "type": "string" },
+        "rating": { "type": "integer" },
+        "timestamp": { "type": "string" },
+        "likes": {
+          "type": "array"
+        },
+        "replies": {
+          "type": "array"
+        }
+      },
+      "required": ["id", "userId", "userDisplayName", "type", "content", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/users/{email}": {
+      "schema": { "$ref": "#/entities/UserData" },
+      "description": "User library documents"
+    },
+    "/forumPosts/{postId}": {
+      "schema": { "$ref": "#/entities/ForumPost" },
+      "description": "Global forum posts"
+    }
+  }
+}

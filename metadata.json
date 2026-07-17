@@ -1,0 +1,8 @@
+{
+  "name": "NovelNest",
+  "description": "An aesthetic sanctuary to organize your bookshelves, track reading streaks, search global library collections, and read public classics page-by-page.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
