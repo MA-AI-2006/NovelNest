@@ -22,6 +22,61 @@ interface ChatMessage {
   text: string;
 }
 
+const callGeminiDirectly = async (
+  apiKey: string,
+  bookTitle: string,
+  bookAuthor: string,
+  currentPage: number,
+  pageCount: number,
+  query: string,
+  history: ChatMessage[]
+): Promise<string> => {
+  const systemInstruction = `You are a helpful, delightful, and spoiler-safe reading companion for the book "${bookTitle}" by ${bookAuthor || 'Unknown'}.
+The user is currently reading this book and has read up to page ${currentPage || 1} out of a total of ${pageCount || 100} pages.
+Your absolute highest-priority directive is: STRICTLY do NOT reveal, hint at, discuss, or reference any events, plot twists, character developments, character deaths, or details that occur AFTER page ${currentPage || 1} of this book.
+Answer the user's questions about the plot, characters, theme, or structure using ONLY plot details and events up to page ${currentPage || 1}.
+If answering a question requires referencing events from page ${Number(currentPage || 1) + 1} or later, you MUST politely decline to answer, explaining that doing so would reveal spoilers beyond page ${currentPage || 1}.
+Keep your responses friendly, insightful, cozy, and concise.`;
+
+  const contents = [
+    ...history.map(msg => ({
+      role: msg.role === 'user' ? 'user' : 'model',
+      parts: [{ text: msg.text }]
+    })),
+    {
+      role: 'user',
+      parts: [{ text: query }]
+    }
+  ];
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents,
+      systemInstruction: {
+        parts: [{ text: systemInstruction }]
+      },
+      generationConfig: {
+        temperature: 0.7
+      }
+    })
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`Gemini API Error: ${response.status} - ${errText}`);
+  }
+
+  const result = await response.json();
+  const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) {
+    throw new Error('Empty response from Gemini API');
+  }
+  return text;
+};
+
 export const DigitalReader: React.FC<DigitalReaderProps> = ({
   bookId,
   title,
@@ -116,26 +171,55 @@ export const DigitalReader: React.FC<DigitalReaderProps> = ({
     setIsChatLoading(true);
 
     try {
-      const response = await fetch('/api/ai/companion', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          bookTitle: title,
-          bookAuthor: author,
-          currentPage: currentPageNum,
-          pageCount: pageCount,
-          query: userQuery,
-          history: newHistory.slice(0, -1) // pass recent turns
-        })
-      });
+      let text = '';
+      let serverResponse: Response | null = null;
+      let serverError: Error | null = null;
 
-      if (!response.ok) {
-        throw new Error('AI companion suffered a connection block.');
+      try {
+        serverResponse = await fetch('/api/ai/companion', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            bookTitle: title,
+            bookAuthor: author,
+            currentPage: currentPageNum,
+            pageCount: pageCount,
+            query: userQuery,
+            history: newHistory.slice(0, -1) // pass recent turns
+          })
+        });
+      } catch (err: any) {
+        serverError = err;
       }
 
-      const data = await response.json();
-      if (data.text) {
-        setChatHistory(prev => [...prev, { role: 'assistant', text: data.text }]);
+      if (serverResponse && serverResponse.ok) {
+        const data = await serverResponse.json();
+        text = data.text;
+      } else {
+        // Fallback to client-side direct Gemini call if backend is down or 404
+        const metaEnv = (import.meta as any).env || {};
+        const clientApiKey = metaEnv.VITE_GEMINI_API_KEY;
+        if (clientApiKey) {
+          console.log('[AI Companion] Server API down or unreachable. Falling back to direct client-side Gemini call...');
+          text = await callGeminiDirectly(
+            clientApiKey,
+            title,
+            author,
+            currentPageNum,
+            pageCount,
+            userQuery,
+            newHistory.slice(0, -1)
+          );
+        } else {
+          const detail = serverError ? ` (Error: ${serverError.message})` : ` (Server status: ${serverResponse?.status || 'unreachable'})`;
+          throw new Error(
+            `AI Companion backend is unreachable${detail}. To enable AI chat on static hosts like Netlify, please configure the VITE_GEMINI_API_KEY environment variable in your deployment dashboard.`
+          );
+        }
+      }
+
+      if (text) {
+        setChatHistory(prev => [...prev, { role: 'assistant', text }]);
       } else {
         throw new Error('Unrecognized response structure');
       }

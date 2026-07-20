@@ -59,9 +59,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     } catch (fbErr: any) {
       console.warn('[Firebase Client Warning] Client-side Google Sign-In bypass/failure:', fbErr.message || fbErr);
       if (isFirebaseConfigLoaded) {
-        // Since we have a custom Firebase configuration, do NOT fall back to server-side Google OAuth.
-        // Instead, explain the sandbox limitation and instruct the user to use the Email & Password tab.
-        setError('Google Popup authentication is restricted inside the preview sandbox iframe. Please use the "Email & Password" tab above to sign up/login, or open the app in a new tab to try Google Sign-In.');
+        // Check if we are inside the AI Studio preview iframe
+        const isIframe = window.self !== window.top;
+        if (isIframe) {
+          setError('Google Popup authentication is restricted inside the preview sandbox iframe. Please use the "Email & Password" tab above to sign up/login, or open the app in a new tab to try Google Sign-In.');
+        } else {
+          setError(`Google Sign-In failed: ${fbErr.message || 'Unknown error'}. Please make sure you have added your Netlify domain (${window.location.hostname}) to your Firebase Console under Authentication -> Settings -> Authorized Domains.`);
+        }
         setIsLoading(false);
         return;
       }
@@ -93,7 +97,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
       }
     } catch (err: any) {
       console.error('[OAuth Client Error]:', err);
-      setError(err.message || 'Authentication failed. Please try again.');
+      let friendlyError = err.message || 'Authentication failed. Please try again.';
+      if (err.message?.includes('Failed to retrieve') || err.message?.includes('fetch') || !navigator.onLine) {
+        friendlyError = 'Authentication server is offline (404). Since you are running on a static host like Netlify or GitHub Pages, you must configure your client-side Firebase environment variables (VITE_FIREBASE_*) in your deployment settings and trigger a rebuild/re-deploy to enable Google Sign-In.';
+      }
+      setError(friendlyError);
     } finally {
       setIsLoading(false);
     }
@@ -116,7 +124,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     try {
       const { auth, isInitialized } = await initFirebaseClient();
       if (!isInitialized || !auth) {
-        throw new Error('Firebase is not yet configured or reachable. Please check your firebase-applet-config.json file.');
+        throw new Error('Firebase is not yet configured on this static host. To use email login or sign up, please add your VITE_FIREBASE_* environment variables under your Netlify site settings and trigger a rebuild.');
       }
 
       if (emailMode === 'signup') {
@@ -288,6 +296,26 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                       </svg>
                       Sign In with Google
                     </button>
+                    
+                    <div className="relative flex py-1 items-center">
+                      <div className="flex-grow border-t-2 border-brand-navy/10"></div>
+                      <span className="flex-shrink mx-4 text-[10px] font-black uppercase tracking-wider text-brand-navy/40">or</span>
+                      <div className="flex-grow border-t-2 border-brand-navy/10"></div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        login('Guest Reader', 'guest@novelnest.app');
+                        onClose();
+                      }}
+                      className="w-full flex items-center justify-center gap-2.5 p-3.5 rounded-2xl border-2 border-brand-navy text-xs font-black uppercase tracking-wider bg-brand-sand text-brand-navy shadow-[4px_4px_0px_0px_var(--color-brand-navy)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all"
+                      id="auth-guest-btn"
+                    >
+                      <User className="h-4.5 w-4.5" />
+                      Explore as Guest (Offline Mode)
+                    </button>
+                    
                     <p className="text-[11px] text-center font-medium text-brand-navy/60 leading-relaxed px-4">
                       Uses direct Google popup client-side Auth if your Firebase config is loaded, otherwise falls back to standard secure Google Sandbox OAuth.
                     </p>

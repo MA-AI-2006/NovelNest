@@ -176,8 +176,18 @@ const MainAppContent: React.FC = () => {
                 Open Auth Portal (Google / Email)
               </button>
               
+              <button
+                type="button"
+                onClick={() => login('Guest Reader', 'guest@novelnest.app')}
+                className="w-full py-3.5 rounded-2xl border-2 border-brand-navy bg-brand-sand hover:bg-brand-sand/90 text-xs font-black uppercase tracking-wider text-brand-navy shadow-[4px_4px_0px_0px_var(--color-brand-navy)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all flex items-center justify-center gap-2"
+                id="enter-as-guest-btn"
+              >
+                <User className="h-4.5 w-4.5 mr-1" />
+                Enter as Guest (Offline Mode)
+              </button>
+              
               <p className="text-[10px] text-center font-bold text-brand-navy/50 uppercase tracking-wider">
-                Click above to log in or create a brand new account
+                Click above to log in, register, or try immediately as a guest
               </p>
             </div>
 

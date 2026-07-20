@@ -226,6 +226,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Sync from cloud database when user loads or signs in
   useEffect(() => {
     if (!user) return;
+    if (user.email === 'guest@novelnest.app') {
+      setIsSyncing(false);
+      return;
+    }
 
     const syncFromCloud = async () => {
       setIsSyncing(true);
@@ -263,7 +267,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Autosave and back-up to server-side DB on change
   useEffect(() => {
-    if (!user) return;
+    if (!user || user.email === 'guest@novelnest.app') return;
 
     const delayDebounce = setTimeout(async () => {
       setIsSyncing(true);

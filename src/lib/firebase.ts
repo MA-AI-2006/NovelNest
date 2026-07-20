@@ -23,14 +23,36 @@ export async function initFirebaseClient() {
   }
 
   try {
-    const response = await fetch('/api/config/firebase');
-    if (!response.ok) {
-      throw new Error('Firebase config endpoint returned ' + response.status);
+    let config: any = null;
+
+    const metaEnv = (import.meta as any).env || {};
+
+    // First, try loading Firebase config from client-side Vite environment variables
+    if (metaEnv.VITE_FIREBASE_API_KEY) {
+      config = {
+        apiKey: metaEnv.VITE_FIREBASE_API_KEY,
+        authDomain: metaEnv.VITE_FIREBASE_AUTH_DOMAIN,
+        projectId: metaEnv.VITE_FIREBASE_PROJECT_ID,
+        storageBucket: metaEnv.VITE_FIREBASE_STORAGE_BUCKET,
+        messagingSenderId: metaEnv.VITE_FIREBASE_MESSAGING_SENDER_ID,
+        appId: metaEnv.VITE_FIREBASE_APP_ID,
+        measurementId: metaEnv.VITE_FIREBASE_MEASUREMENT_ID
+      };
+      console.log('[Firebase Client] Successfully loaded Firebase config from client-side environment variables.');
+    } else {
+      // Otherwise, fall back to fetching config from Express API server
+      try {
+        const response = await fetch('/api/config/firebase');
+        if (response.ok) {
+          config = await response.json();
+        }
+      } catch (e) {
+        console.warn('[Firebase Client] Server-side config fetch failed, checking standard fallback...');
+      }
     }
-    const config = await response.json();
     
     // Basic verification of the config keys
-    if (!config.apiKey || !config.projectId) {
+    if (!config || !config.apiKey || !config.projectId) {
       throw new Error('Firebase config is incomplete or not yet configured');
     }
 
